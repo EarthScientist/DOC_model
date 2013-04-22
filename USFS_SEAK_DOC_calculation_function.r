@@ -5,7 +5,7 @@
 #	different groups of extracted data.
 f <- function(fun,y,ind=0){
 	L <- switch( fun, min=list(min,1), max=list(max,1), elev=list(mean,1), slope=list(mean,2), sum=list(sum,ind),
-				pct=list(function(x,na.rm=T) 100*length(which(x == 19))/length(x),3) )
+		npixels=list(nrow,1),pct=list(function(x,na.rm=T) 100*length(which(x == 19))/length(x),3) )
 	unlist(lapply(y, function(x) if(!is.null(x)) L[[1]](x,na.rm=T) else NA),,L[[2]])
 }
 
@@ -36,14 +36,14 @@ DOC <- function(dem, lc, watersheds, pr.stack, pet.stack){
 	# calculate the summary stats from the extracted data in each of the watersheds
 	# here we use the lapply() function in R's base package to loop through the elements
 	# in the list and calculate some metrics based on columns in the nested matrices 
-	min.elev <- f("min",e); max.elev <- f("max",e); mean.elev <- f("elev",e); mean.slope <- f("slope",e); pct.glacier <- f("pct",e)		
+	min.elev <- f("min",e); max.elev <- f("max",e); mean.elev <- f("elev",e); mean.slope <- f("slope",e); pct.glacier <- f("pct",e)	; count.pixels <- f("npixels",e)	
 	# total water available at each time step
 	total.water <- c()
 	for(i in 1:nlayers(waterAvail))	total.water <- cbind(total.water, f("sum",e,i))
 	# add column names to the total water matrix
 	colnames(total.water) <- paste("total.water.",1:nlayers(waterAvail),sep="")
 	# cbind the vectors and the total.water matrix together
-	output.metrics.matrix <- cbind(min.elev, max.elev, mean.elev, mean.slope, pct.glacier, total.water)
+	output.metrics.matrix <- cbind(min.elev, max.elev, mean.elev, mean.slope, pct.glacier, count.pixels, total.water)
 	# return the matrix from the function
 	return(output.metrics.matrix) 
 }
@@ -97,6 +97,10 @@ classify.watersheds <- function(output.metrics.matrix){
 
 # so now we have a new output.metrics.matrix that can be run through the other suite of equations for the total DOC to be calculated seasonally and annually
 
+# create a lookup list:
+propList <- list(QTYPE.1=read.csv('/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table/QType1_proportion_annual_discharge.csv'),QTYPE.2=read.csv('/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table/QType2_proportion_annual_discharge.csv'),QTYPE.3=read.csv('/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table/QType3_proportion_annual_discharge.csv'))
 
 
+# res(in meters)^2 * npixels
+water.sqm <- cellVal*0.001*npixels
 
