@@ -36,7 +36,7 @@ DOC <- function(dem, lc, watersheds, pr.stack, pet.stack){
 	# calculate the summary stats from the extracted data in each of the watersheds
 	# here we use the lapply() function in R's base package to loop through the elements
 	# in the list and calculate some metrics based on columns in the nested matrices 
-	min.elev <- f("min",e); max.elev <- f("max",e); mean.elev <- f("elev",e); mean.slope <- f("slope",e); pct.glacier <- f("pct",e)	; count.pixels <- f("npixels",e)	
+	min.elev <- f("min",y,e); max.elev <- f("max",y,e); mean.elev <- f("elev",y,e); mean.slope <- f("slope",y,e); count.pixels <- f("npixels",y,e); pct.glacier <- f("pct",y,e); 
 	# total water available at each time step
 	total.water <- c()
 	for(i in 1:nlayers(waterAvail))	total.water <- cbind(total.water, f("sum",e,i))
@@ -65,7 +65,7 @@ output <- DOC(dem,lc,ws,s.pr,s.pet)
 
 # TESTING AREA
 
-
+# this is the classification information from Frances that I am applying in the below function 
 # here is where we will use what we have learned above and classify the output polygons based on some criteria 
 # IF AvgElev < 250 AND MaxElev < 900 AND %SnowIce = 0, THEN QType = 1
 # IF AvgElev >= 250 AND AvgElev < 300 AND MaxElev < 900 AND %SnowIce = 0 AND AvgSlope <=20°, THEN QType = 1
@@ -97,8 +97,9 @@ classify.watersheds <- function(output.metrics.matrix){
 
 # so now we have a new output.metrics.matrix that can be run through the other suite of equations for the total DOC to be calculated seasonally and annually
 
-# create a lookup list:
-propList <- list(QTYPE.1=read.csv('/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table/QType1_proportion_annual_discharge.csv'),QTYPE.2=read.csv('/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table/QType2_proportion_annual_discharge.csv'),QTYPE.3=read.csv('/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table/QType3_proportion_annual_discharge.csv'))
+# create a lookup list with the monthly scaling factors for each watershed type:
+lookup.path <- "/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table" # this is the path to the folder containing the proportion annual discharge tables for each QType
+propList <- list(QTYPE.1=read.csv(file.path(lookup.path,'QType1_proportion_annual_discharge.csv')),QTYPE.2=read.csv(file.path(lookup.path,'QType2_proportion_annual_discharge.csv')),QTYPE.3=read.csv(file.path(lookup.path,'QType3_proportion_annual_discharge.csv')))
 
 
 # res(in meters)^2 * npixels
