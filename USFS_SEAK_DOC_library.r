@@ -135,15 +135,39 @@ f2 <- function(fun,y,ind=0){
 # this function calculates the discharge proportion and creates seasonal sums
 dischargePropWS <- function(discharge.output,propList){
 	propDis <- lapply(propList,function(x) x[,3])
-	f <- function(x,y) if(is.na(x[1])) NA else x[2] * y[[x[1]]]
-	out <- do.call("rbind",apply(discharge.output[,c(6,19)], 1, FUN=f, y=propDis))
-	colnames(out) <- paste("month",1:12,"discharge.prop",sep=".")
-	out <- cbind(out,discharge.output[,6])
-	# create the columnSums needed for different subsets
-	winterQ.1.2<-f2("winter.1.2",out); summerQ.1.2<-f2("summer.1.2",out); fallQ.1.2<-f2("fall.1.2",out)
-	winterQ.3<-f2("winter.3",out); summerQ.3<-f2("summer.3",out)
-	out <- cbind(out,winterQ.1.2=winterQ.1.2,summerQ.1.2=summerQ.1.2,fallQ.1.2=fallQ.1.2,winterQ.3=winterQ.3,summerQ.3=summerQ.3)
-	return(out)
+	monDis <- do.call("rbind",apply(discharge.output[,c(7,20)], 1, FUN=function(x,y) if(!is.na(x[1])) x[2] * y[[x[1]]] else NA, y=propDis))
+	colnames(monDis) <- paste("month",1:12,"discharge.prop",sep=".")
+	monDis.class <- cbind(monDis,ws.class=discharge.output[,7]) # combine the dischargeProp and ws classification
+	# Calculate column sums needed for different subsets using the switch function f2()
+	winterQ.1.2<-f2("winter.1.2",monDis); summerQ.1.2<-f2("summer.1.2",monDis); fallQ.1.2<-f2("fall.1.2",monDis)
+	winterQ.3<-f2("winter.3",monDis); summerQ.3<-f2("summer.3",monDis)
+	# Calculate estimated seasonal DOC concentration (in parts per million) for each WS. 
+	winterSummer.Q12.ppm <- 2.80 + (0.120 * discharge.output[,6])
+	fall.Q12.ppm <- 4.77 + (0.135 * discharge.output[,6])
+	# Calculate estimated WS DOC seasonal flux in grams.
+	# apply(out,1,FUN=function(x,y) if(!is.na(x[1])) x[2] * y[[x[1]]] else NA,)
+	winter.DOC.flux.grams = numeric()
+	summer.DOC.flux.grams = numeric()
+	fall.DOC.flux.grams = numeric()
+	# winter3.DOC.flux.grams = numeric()
+	# summer3.DOC.flux.grams = numeric()
+	for(i in 1:nrow(monDis)){
+		if(monDis.class[i,ncol(monDis.class)] == 1 | 2){  #monDis.class[i,ncol(monDis.class)] == 2
+			winter.DOC.flux.grams[i] = winterQ.1.2[i] * winterSummer.Q12.ppm[i]
+			summer.DOC.flux.grams[i] = summerQ.1.2[i] * winterSummer.Q12.ppm[i]
+			fall.DOC.flux.grams[i] = fallQ.1.2[i] * fall.Q12.ppm[i]
+		}else if(monDis.class[i,ncol(monDis.class)] == 3){
+			winter.DOC.flux.grams[i] = winterQ.3[i] * 2.3
+			summer.DOC.flux.grams[i] = summerQ.3[i] * 1.16
+			fall.DOC.flux.grams[i] = NA
+		}else{
+			NA
+		}
+	}
+	out <- cbind(discharge.output[,1:7],monDis[,(ncol(monDis)-1)],winterQ.1.2=winterQ.1.2,summerQ.1.2=summerQ.1.2,fallQ.1.2=fallQ.1.2,winterQ.3=winterQ.3,summerQ.3=summerQ.3)
+	DOC.flux <- cbind(winter.DOC.flux.grams,summer.DOC.flux.grams,fall.DOC.flux.grams)
+	DOC.flux <- cbind(DOC.flux, annual.DOC.flux.grams=rowSums(DOC.flux))
+	return(list(out,DOC.flux,pCTRF.DOC.flux.ann.grams=sum(na.omit(test[[2]][,ncol(test[[2]])]))))
 }
 
 
