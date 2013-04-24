@@ -124,12 +124,27 @@ dischargeWS <- function(classify.output){
 	return(discharge.matrix)
 }
 
+f2 <- function(fun,y,ind=0){
+	L <- switch(fun, winter.1.2=list(c(1,2,3,11,12)), summer.1.2=list(c(4:7)), fall.1.2=list(c(8:10)), winter.3=list(c(1,2,3,4,11,12)), summer.3=list(c(5:10)))
+	rowSums(y[,L[[1]]])
+	# apply(y[,L[[2]]], 1, L[[1]](x)) 
+}
 
-dischargeProportionWS <- function(discharge.output,propList){
+dischargePropWS <- function(discharge.output,propList){
 	propDis <- lapply(propList,function(x) x[,3])
 	f <- function(x,y) if(is.na(x[1])) NA else x[2] * y[[x[1]]]
 	out <- do.call("rbind",apply(discharge.output[,c(6,19)], 1, FUN=f, y=propDis))
+	colnames(out) <- paste("month",1:12,"discharge.prop",sep=".")
+	out <- cbind(out,discharge.output[,6])
+	# create the columnSums needed for different subsets
+	winterQ.1.2<-f2("winter.1.2",out); summerQ.1.2<-f2("summer.1.2",out); fallQ.1.2<-f2("fall.1.2",out)
+	winterQ.3<-f2("winter.3",out); summerQ.3<-f2("summer.3",out)
+	out <- cbind(out,winterQ.1.2=winterQ.1.2,summerQ.1.2=summerQ.1.2,fallQ.1.2=fallQ.1.2,winterQ.3=winterQ.3,summerQ.3=summerQ.3)
+	return(out)
 }
+
+dischargePropWS(discharge.output,propList)
+
 
 
 

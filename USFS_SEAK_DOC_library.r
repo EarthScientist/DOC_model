@@ -108,10 +108,46 @@ discharge.watersheds <- function(output.metrics.matrix){
 }
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
+# THIS FUNCTION IS IN ALPHA STATE!!!!
 
+# This function takes the discharge.watersheds outputs calculates the discharge in m3
+dischargeWS <- function(classify.output){
+	ws.area.m2 <- unlist(lapply(classify.output[,5], function(x) x*1000))
+	# move the columns of months into a list of numerics
+	l=list(); for(i in 6:(ncol(classify.output)-1)) l<-append(l,list(classify.output[,i]))
+	# calculate the monthly water in m3
+	water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
+	# give the colnames from the input back to the calculated water in m3
+	colnames(water.m3.month) <- paste("month",1:ncol(water.m3.month),"m3",sep=".")
+	# colnames(water.m3.month) <- colnames(classify.output)[7:ncol(classify.output)]
+	discharge.matrix <- cbind(classify.output[,c(1:5,ncol(classify.output))], water.m3.month, year.sum.m3=rowSums(water.m3.month))
+	return(discharge.matrix)
+}
 
+# -------------------------------------------------------------------------------------------------------------------------------------------------
+# THIS FUNCTION IS IN ALPHA STATE!!!!
 
+# this switch function seasonally sums the discharge outputs from above based on the QType and season
+f2 <- function(fun,y,ind=0){
+	L <- switch(fun, winter.1.2=list(c(1,2,3,11,12)), summer.1.2=list(c(4:7)), fall.1.2=list(c(8:10)), winter.3=list(c(1,2,3,4,11,12)), summer.3=list(c(5:10)))
+	rowSums(y[,L[[1]]])
+	# apply(y[,L[[2]]], 1, L[[1]](x)) 
+}
 
+# this function calculates the discharge proportion and creates seasonal sums
+dischargePropWS <- function(discharge.output,propList){
+	propDis <- lapply(propList,function(x) x[,3])
+	f <- function(x,y) if(is.na(x[1])) NA else x[2] * y[[x[1]]]
+	out <- do.call("rbind",apply(discharge.output[,c(6,19)], 1, FUN=f, y=propDis))
+	colnames(out) <- paste("month",1:12,"discharge.prop",sep=".")
+	out <- cbind(out,discharge.output[,6])
+	# create the columnSums needed for different subsets
+	winterQ.1.2<-f2("winter.1.2",out); summerQ.1.2<-f2("summer.1.2",out); fallQ.1.2<-f2("fall.1.2",out)
+	winterQ.3<-f2("winter.3",out); summerQ.3<-f2("summer.3",out)
+	out <- cbind(out,winterQ.1.2=winterQ.1.2,summerQ.1.2=summerQ.1.2,fallQ.1.2=fallQ.1.2,winterQ.3=winterQ.3,summerQ.3=summerQ.3)
+	return(out)
+}
 
+dischargePropWS(discharge.output,propList)
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
