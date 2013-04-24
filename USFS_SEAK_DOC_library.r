@@ -30,23 +30,23 @@ getMetrics <- function(dem, lc, watersheds, pr.stack, pet.stack){
 	# now lets stack the data together
 	terrainStack <- stack(dem, slope, lc, waterAvail)
 
-	# NEW VARIABLE FROM FRANCES Proportion of each watershed in 0 to 5 degree slopes(0 <= slope <= 5) 
-	ws.Slp0_5 <- lapply(e,function(x) if(is.null(x[,2])) NA else length(which(x[,2]<=5))/length(x[,2]))
-
 	# now lets extract the data that exist in the maps into a nested list object
 	e <- extract(terrainStack,watersheds)
 	
 	# calculate the summary stats from the extracted data in each of the watersheds
 	# here we use the lapply() function in R's base package to loop through the elements
 	# in the list and calculate some metrics based on columns in the nested matrices 
-	max.elev <- f("max",e); mean.elev <- f("elev",e); mean.slope <- f("slope",e); count.pixels <- f("npixels",e); pct.glacier <- f("pct",e); 
+	max.elev <- f("max",e); mean.elev <- f("elev",e); mean.slope <- f("slope",e); count.pixels <- f("npixels",e); pct.glacier <- f("pct",e)
+	# NEW VARIABLE FROM FRANCES Proportion of each watershed in 0 to 5 degree slopes(0 <= slope <= 5) 
+	low.slope.pct <- do.call("rbind", lapply(e,function(x) if(is.null(x[,2])) NA else length(which(x[,2]<=5))/length(x[,2])))
+	colnames(low.slope.pct) <- '0to5.slope.pct' 
 	# total water available at each time step
 	total.water <- c()
 	for(i in 1:nlayers(waterAvail))	total.water <- cbind(total.water, f("sum",e,i))
 	# add column names to the total water matrix
 	colnames(total.water) <- paste("total.water.",1:nlayers(waterAvail),sep="")
 	# cbind the vectors and the total.water matrix together
-	output.metrics.matrix <- cbind(max.elev, mean.elev, mean.slope, pct.glacier, count.pixels, total.water)
+	output.metrics.matrix <- cbind(max.elev, mean.elev, mean.slope, pct.glacier, count.pixels, low.slope.pct, total.water)
 	# return the matrix from the function
 	return(output.metrics.matrix) 
 }
