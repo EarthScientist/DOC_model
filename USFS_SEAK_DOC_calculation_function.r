@@ -4,9 +4,9 @@
 #   script.  This is best practice when working with duplicated functions with slightly different metrics being returned for 
 #	different groups of extracted data.
 f <- function(fun,y,ind=0){
-	L <- switch( fun, min=list(min,1), max=list(max,1), elev=list(mean,1), slope=list(mean,2), sum=list(sum,ind),
+	L <- switch( fun, max=list(max,1), elev=list(mean,1), slope=list(mean,2), sum=list(sum,ind),
 		npixels=list(nrow,1),pct=list(function(x,na.rm=T) 100*length(which(x == 19))/length(x),3) )
-	unlist(lapply(y, function(x) if(!is.null(x)) L[[1]](x,na.rm=T) else NA),,L[[2]])
+	unlist(lapply(y, function(x) if(!is.null(x)) L[[1]](x) else NA),,L[[2]])
 }
 
 # THIS FUNCTION WILL PERFORM THE NEEDED ANALYSIS FOR THE DOC MODELLING PROJECT:
@@ -20,7 +20,7 @@ f <- function(fun,y,ind=0){
 # pet.stack = rasterStack of pet layers that will be analyzed for total water available
 #   ** the pr.stack and the pet.stack must have the same nlayers and be in the same chronological order**
 # >> this version of the DOC function requires the above function (currently named f()) is available in the environment
-DOC <- function(dem, lc, watersheds, pr.stack, pet.stack){
+getMetrics <- function(dem, lc, watersheds, pr.stack, pet.stack){
 	# generate slope from the dem
 	slope <- terrain(dem, opt='slope', unit='degrees', neighbors=8)
 
@@ -36,14 +36,14 @@ DOC <- function(dem, lc, watersheds, pr.stack, pet.stack){
 	# calculate the summary stats from the extracted data in each of the watersheds
 	# here we use the lapply() function in R's base package to loop through the elements
 	# in the list and calculate some metrics based on columns in the nested matrices 
-	min.elev <- f("min",y,e); max.elev <- f("max",y,e); mean.elev <- f("elev",y,e); mean.slope <- f("slope",y,e); count.pixels <- f("npixels",y,e); pct.glacier <- f("pct",y,e); 
+	max.elev <- f("max",e); mean.elev <- f("elev",e); mean.slope <- f("slope",e); count.pixels <- f("npixels",e); pct.glacier <- f("pct",e); 
 	# total water available at each time step
 	total.water <- c()
 	for(i in 1:nlayers(waterAvail))	total.water <- cbind(total.water, f("sum",e,i))
 	# add column names to the total water matrix
 	colnames(total.water) <- paste("total.water.",1:nlayers(waterAvail),sep="")
 	# cbind the vectors and the total.water matrix together
-	output.metrics.matrix <- cbind(min.elev, max.elev, mean.elev, mean.slope, pct.glacier, count.pixels, total.water)
+	output.metrics.matrix <- cbind(max.elev, mean.elev, mean.slope, pct.glacier, count.pixels, total.water)
 	# return the matrix from the function
 	return(output.metrics.matrix) 
 }
@@ -59,7 +59,7 @@ lc <- raster(file.path(path,"lc.tif"))
 s.pr <- brick(file.path(path,"pr_61_90_monthly.tif"))
 s.pet <- brick(file.path(path,"pet_61_90_monthly.tif"))
 ws <- readShapePoly(file.path(path,"ws_pCTRF_N_NAD83Albers"))
-output <- DOC(dem,lc,ws,s.pr,s.pet)
+output <- getMetrics(dem,lc,ws,s.pr,s.pet)
 
 
 
@@ -78,20 +78,30 @@ output <- DOC(dem,lc,ws,s.pr,s.pet)
 # IF AvgElev >= 300 AND % SnowIce >= 5, THEN QType = 3
 # IF AvgElev >= 700 AND MaxElev >= 1600, THEN QType = 3
 
-classify.watersheds <- function(output.metrics.matrix){
-	output.metrics.matrix <- cbind(output.metrics.matrix,NA)
-	for(i in 1:nrow(output.metrics.matrix)){
+classifyWS <- function(metrics.output){
+	metrics.output <- cbind(metrics.output,ws.class=NA)
+	for(i in 1:nrow(metrics.output)){
 		if(all(complete.cases(output[i,]) == TRUE)){
-			if((output.metrics.matrix[i,3] < 250 & output.metrics.matrix[i,2] < 900 & output.metrics.matrix[i,5] == 0)|	(output.metrics.matrix[i,3] >= 250 & output.metrics.matrix[i,3] < 300 & output.metrics.matrix[i,2] < 900 & output.metrics.matrix[i,5] == 0 & output.metrics.matrix[i,4] <= 20)){
-				output.metrics.matrix[i,ncol(output.metrics.matrix)] <- 1
-			}else if((output.metrics.matrix[i,3] >= 250 & output.metrics.matrix[i,3] < 300 & output.metrics.matrix[i,2] < 900 & output.metrics.matrix[i,5] == 0 & output.metrics.matrix[i,4] > 20)| (output.metrics.matrix[i,3] < 300 & output.metrics.matrix[i,5] > 0)| (output.metrics.matrix[i,3] < 300 & output.metrics.matrix[i,2] >= 900)|(output.metrics.matrix[i,3] >= 300 & output.metrics.matrix[i,5] < 5)){
-				output.metrics.matrix[i,ncol(output.metrics.matrix)] <- 2
-			}else if((output.metrics.matrix[i,3] >= 300 & output.metrics.matrix[i,5] >= 5)| (output.metrics.matrix[i,3] >= 700 & output.metrics.matrix[i,2] >= 1600)){
-				output.metrics.matrix[i,ncol(output.metrics.matrix)] <- 3
+			if((metrics.output[i,3] < 250 & metrics.output[i,2] < 900 & metrics.output[i,5] == 0)|	
+				(metrics.output[i,3] >= 250 & metrics.output[i,3] < 300 &
+				metrics.output[i,2] < 900 & metrics.output[i,5] == 0 & metrics.output[i,4] <= 20)){
+
+				metrics.output[i,ncol(metrics.output)] <- 1
+
+			}else if((metrics.output[i,3] >= 250 & metrics.output[i,3] < 300 & metrics.output[i,2] < 900 &
+				metrics.output[i,5] == 0 & metrics.output[i,4] > 20)| (metrics.output[i,3] < 300 & metrics.output[i,5] > 0)|
+				(metrics.output[i,3] < 300 & metrics.output[i,2] >= 900)|(metrics.output[i,3] >= 300 & metrics.output[i,5] < 5)){
+				
+				metrics.output[i,ncol(metrics.output)] <- 2
+
+			}else if((metrics.output[i,3] >= 300 & metrics.output[i,5] >= 5)| (metrics.output[i,3] >= 700 & metrics.output[i,2] >= 1600)){
+				
+				metrics.output[i,ncol(metrics.output)] <- 3
+
 			}
 		}
 	}
-	return(output.metrics.matrix)
+	return(metrics.output)
 }
 
 
@@ -101,7 +111,93 @@ classify.watersheds <- function(output.metrics.matrix){
 lookup.path <- "/workspace/Shared/00_Shared_Project_data/DOC_model/project_data/lookup_table" # this is the path to the folder containing the proportion annual discharge tables for each QType
 propList <- list(QTYPE.1=read.csv(file.path(lookup.path,'QType1_proportion_annual_discharge.csv')),QTYPE.2=read.csv(file.path(lookup.path,'QType2_proportion_annual_discharge.csv')),QTYPE.3=read.csv(file.path(lookup.path,'QType3_proportion_annual_discharge.csv')))
 
+dischargeWS <- function(classify.output){
+	ws.area.m2 <- unlist(lapply(classify.output[,5], function(x) x*1000))
+	# move the columns of months into a list of numerics
+	l=list(); for(i in 6:(ncol(classify.output)-1)) l<-append(l,list(classify.output[,i]))
+	# calculate the monthly water in m3
+	water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
+	# give the colnames from the input back to the calculated water in m3
+	colnames(water.m3.month) <- paste("month",1:ncol(water.m3.month),"m3",sep=".")
+	# colnames(water.m3.month) <- colnames(classify.output)[7:ncol(classify.output)]
+	discharge.matrix <- cbind(classify.output[,c(1:5,ncol(classify.output))], water.m3.month, year.sum.m3=rowSums(water.m3.month))
+	return(discharge.matrix)
+}
 
-# res(in meters)^2 * npixels
-water.sqm <- cellVal*0.001*npixels
+
+dischargeProportionWS <- function(discharge.output,propList){
+	propDis <- lapply(propList,function(x) x[,3])
+	f <- function(x,y) if(is.na(x[1])) NA else x[2] * y[[x[1]]]
+	out <- do.call("rbind",apply(discharge.output[,c(6,19)], 1, FUN=f, y=propDis))
+}
+
+
+
+for(i in 1:length(out)){
+if(length(out[[i]])==0){
+out[[i]]<-rep(NA,12)
+}}
+
+
+apply(discharge.output[,7:18],1,function(x,y){ propList[[discharge.output[,6]]][,3]},y=discharge.output[,7:18])
+
+f <- function(output.metrics.matrix){
+	q.meters3.Mo = apply(output.metrics.matrix[,7:ncol(output.metrics.matrix)], 1, function(x) waterMeters3.Yr * propList[[output.metrics.matrix[,19]]])
+}
+
+# TESTING AREA
+ws.area.m2 <- unlist(lapply(output.classify[,5], function(x) x*1000))
+
+f2 <- function(x,y){
+	count=0
+	if(is.na(x) == FALSE){
+		count=count+1
+		x*0.001*y[count]
+	}else{
+		count=count+1
+		NA
+	}
+}
+
+f3 <- function(x,y){
+	if(is.na(x) == TRUE){
+		c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+	}else{
+		x[2] * y[[x[1]]]
+	}
+}
+
+water.m3.month <- apply(output.classify[,7:(ncol(output.classify)-1)], 1,f2, y=ws.area.m2)
+
+Vectorize(f2, vectorize.args = output.classify[,7:(ncol(output.classify)-1)], SIMPLIFY = TRUE, USE.NAMES = TRUE)
+
+
+
+
+	l=list()
+	for(i in 7:ncol(df)) append(l,list(df[,i]))
+
+	# water.m3.month <- apply(output.metrics.matrix[,7:(ncol(output.metrics.matrix)-1)], 1, function(x,y) x*0.001*y, y=ws.area.m2)
+
+
+
+
+ws.area.m2 <- unlist(lapply(df[,5], function(x) x*1000))
+# move the columns of months into a list of numerics
+l=list(); for(i in 6:(ncol(df)-1)) l<-append(l,list(df[,i]))
+# calculate the monthly water in m3
+water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
+# new <- t(water.m3.month)
+# give the colnames from the input back to the calculated water in m3
+# colnames(water.m3.month) <- paste("total.water.m3.",1:ncol(water.m3.month),sep="")
+colnames(water.m3.month) <- colnames(df)[7:ncol(df)]
+discharge.matrix <- cbind(df[,1:5], water.m3.month,rowSums(water.m3.month))
+
+
+
+
+
+
+
+
 
