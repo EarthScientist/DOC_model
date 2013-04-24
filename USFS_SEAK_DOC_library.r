@@ -92,20 +92,19 @@ classify.watersheds <- function(metrics.output){
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
-# THIS FUNCTION WILL CALCULATE THE MONTHLY AND ANNUAL DISCHARGE IN cubic meters
-# !the input is the output matrix from the function classify.watersheds()!
-discharge.watersheds <- function(output.metrics.matrix){
-	ws.area.m2 <- unlist(lapply(output.metrics.matrix[,5], function(x) x*1000))
-	# move the columns of months into a list of numerics
-	l=list(); for(i in 6:(ncol(output.metrics.matrix)-1)) l<-append(l,list(output.metrics.matrix[,i]))
-	# calculate the monthly water in m3
-	water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
-	# give the colnames from the input back to the calculated water in m3
-	colnames(water.m3.month) <- paste("month",1:ncol(water.m3.month),"m3",sep=".")
-	# colnames(water.m3.month) <- colnames(output.metrics.matrix)[7:ncol(output.metrics.matrix)]
-	discharge.matrix <- cbind(output.metrics.matrix[,1:5], water.m3.month,year.sum.m3=rowSums(water.m3.month))
-	return(discharge.matrix)
-}
+# # THIS FUNCTION WILL CALCULATE THE MONTHLY AND ANNUAL DISCHARGE IN cubic meters
+# # !the input is the output matrix from the function classify.watersheds()!
+# discharge.watersheds <- function(classify.output){
+# 	ws.area.m2 <- unlist(lapply(classify.output[,5], function(x) x*1000))
+# 	# move the columns of months into a list of numerics for each column
+# 	l=list(); for(i in 7:(ncol(classify.output)-1)) l<-append(l,list(classify.output[,i]))
+# 	# calculate the monthly water in m3
+# 	water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
+# 	# give the colnames from the input back to the calculated water in m3
+# 	colnames(water.m3.month) <- paste("month",1:ncol(water.m3.month),"m3",sep=".")
+# 	discharge.matrix <- cbind(classify.output[,c(1:6,ncol(classify.output))], water.m3.month, year.sum.m3=rowSums(water.m3.month))
+# 	return(discharge.matrix)
+# }
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
 # THIS FUNCTION IS IN ALPHA STATE!!!!
@@ -113,14 +112,13 @@ discharge.watersheds <- function(output.metrics.matrix){
 # This function takes the discharge.watersheds outputs calculates the discharge in m3
 dischargeWS <- function(classify.output){
 	ws.area.m2 <- unlist(lapply(classify.output[,5], function(x) x*1000))
-	# move the columns of months into a list of numerics
-	l=list(); for(i in 6:(ncol(classify.output)-1)) l<-append(l,list(classify.output[,i]))
+	# move the columns of months into a list of numerics for each column
+	l=list(); for(i in 7:(ncol(classify.output)-1)) l<-append(l,list(classify.output[,i]))
 	# calculate the monthly water in m3
 	water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
 	# give the colnames from the input back to the calculated water in m3
 	colnames(water.m3.month) <- paste("month",1:ncol(water.m3.month),"m3",sep=".")
-	# colnames(water.m3.month) <- colnames(classify.output)[7:ncol(classify.output)]
-	discharge.matrix <- cbind(classify.output[,c(1:5,ncol(classify.output))], water.m3.month, year.sum.m3=rowSums(water.m3.month))
+	discharge.matrix <- cbind(classify.output[,c(1:6,ncol(classify.output))], water.m3.month, year.sum.m3=rowSums(water.m3.month))
 	return(discharge.matrix)
 }
 
@@ -148,6 +146,5 @@ dischargePropWS <- function(discharge.output,propList){
 	return(out)
 }
 
-dischargePropWS(discharge.output,propList)
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
