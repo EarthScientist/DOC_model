@@ -92,21 +92,6 @@ classify.watersheds <- function(metrics.output){
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------------------
-# # THIS FUNCTION WILL CALCULATE THE MONTHLY AND ANNUAL DISCHARGE IN cubic meters
-# # !the input is the output matrix from the function classify.watersheds()!
-# discharge.watersheds <- function(classify.output){
-# 	ws.area.m2 <- unlist(lapply(classify.output[,5], function(x) x*1000))
-# 	# move the columns of months into a list of numerics for each column
-# 	l=list(); for(i in 7:(ncol(classify.output)-1)) l<-append(l,list(classify.output[,i]))
-# 	# calculate the monthly water in m3
-# 	water.m3.month <- do.call("cbind",lapply(l,FUN=function(x,y) x*0.001*y, y=ws.area.m2))
-# 	# give the colnames from the input back to the calculated water in m3
-# 	colnames(water.m3.month) <- paste("month",1:ncol(water.m3.month),"m3",sep=".")
-# 	discharge.matrix <- cbind(classify.output[,c(1:6,ncol(classify.output))], water.m3.month, year.sum.m3=rowSums(water.m3.month))
-# 	return(discharge.matrix)
-# }
-
-# -------------------------------------------------------------------------------------------------------------------------------------------------
 # THIS FUNCTION IS IN ALPHA STATE!!!!
 
 # This function takes the discharge.watersheds outputs calculates the discharge in m3
@@ -164,10 +149,10 @@ dischargePropWS <- function(discharge.output,propList){
 			NA
 		}
 	}
-	out <- cbind(discharge.output[,1:7],monDis[,(ncol(monDis)-1)],winterQ.1.2=winterQ.1.2,summerQ.1.2=summerQ.1.2,fallQ.1.2=fallQ.1.2,winterQ.3=winterQ.3,summerQ.3=summerQ.3)
-	DOC.flux <- cbind(winter.DOC.flux.grams,summer.DOC.flux.grams,fall.DOC.flux.grams)
-	DOC.flux <- cbind(DOC.flux, annual.DOC.flux.grams=rowSums(DOC.flux))
-	return(list(out,DOC.flux,pCTRF.DOC.flux.ann.grams=sum(na.omit(test[[2]][,ncol(test[[2]])]))))
+	seasonal.totalQ <- cbind(winterQ.1.2=winterQ.1.2,summerQ.1.2=summerQ.1.2,fallQ.1.2=fallQ.1.2,winterQ.3=winterQ.3,summerQ.3=summerQ.3)
+	seasonal.DOC.flux <- cbind(winter.DOC.flux.grams,summer.DOC.flux.grams,fall.DOC.flux.grams)
+	DOC.flux <- cbind(seasonal.DOC.flux, annual.DOC.flux.grams=rowSums(seasonal.DOC.flux))
+	return(list(extracted.values=discharge.output[,1:7], dicharged=discharge.output[,8:ncol(discharge.output)],seasonal.totalQ=seasonal.totalQ,seasonal.DOC.flux=seasonal.DOC.flux,pCTRF.DOC.flux.ann.grams=sum(na.omit(test[[2]][,ncol(test[[2]])]))))
 }
 
 
